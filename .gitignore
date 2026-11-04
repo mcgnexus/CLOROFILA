@@ -1,0 +1,14 @@
+# Artefactos generados (se recrean con dataset_sintetico.py / entrenar_cab.py)
+backend/data/
+backend/modelos/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Sistema
+.DS_Store
+Thumbs.db

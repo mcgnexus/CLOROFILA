@@ -1,0 +1,17 @@
+FASE 1 (MVP - 2 horas):
+- Backend FastAPI con endpoint WebSocket
+- Simulador de datos AS7341
+- Frontend básico con gráfico de espectro
+- Conexión WebSocket funcional
+
+FASE 2 (Gemelo Digital - 2 horas):
+- Implementar modelo simplificado de reflectancia
+- Función de comparación real vs. predicción
+- Visualización de ambos espectros superpuestos
+- Indicador de salud de clorofila
+
+FASE 3 (Pulido - 1 hora):
+- Controles para ajustar parámetros del modelo
+- Selector de modo (reflectancia/transmitancia)
+- Mejoras visuales en el dashboard
+- Documentación completa

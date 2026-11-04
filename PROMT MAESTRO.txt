@@ -1,0 +1,89 @@
+Eres un desarrollador full-stack especializado en IoT, ciencia de datos y visualización web.
+Tu tarea es construir un sistema de gemelo digital simplificado para un sensor espectral AS7341 
+conectado a un ESP32, que mide clorofila en hojas (reflectancia y transmitancia).
+
+CONTEXTO TÉCNICO:
+- Sensor: AS7341 (11 canales espectrales: 415nm, 445nm, 480nm, 515nm, 555nm, 590nm, 630nm, 680nm, NIR, Clear, NIR2)
+- Microcontrolador: ESP32
+- Aplicación: Monitoreo de clorofila en hojas (agricultura)
+- Modos: Reflectancia y Transmitancia
+
+OBJETIVO:
+Crear un sistema web que:
+1. Reciba datos del ESP32 (o datos simulados si no hay hardware)
+2. Ejecute un modelo de gemelo digital simplificado
+3. Compare lecturas reales vs. predicciones del modelo
+4. Visualice todo en un dashboard web en tiempo real
+
+REQUISITOS TÉCNICOS:
+
+BACKEND (Python):
+- Framework: FastAPI
+- Endpoint WebSocket para datos en tiempo real
+- Endpoint REST para configuración y datos históricos
+- Módulo de gemelo digital con modelo simplificado de reflectancia de hoja
+- Simulador de datos del AS7341 para testing sin hardware
+- Estructura de archivos:
+  /backend
+    /main.py (FastAPI app, WebSockets)
+    /twin_model.py (modelo de gemelo digital)
+    /sensor_simulator.py (simulador AS7341)
+    /data_handler.py (procesamiento de datos)
+    requirements.txt
+
+FRONTEND (Web):
+- HTML5 + CSS3 + JavaScript vanilla (sin frameworks pesados)
+- Librería de gráficos: Chart.js
+- Dashboard con:
+  * Gráfico de espectro en tiempo real (11 canales)
+  * Comparación: lectura real vs. predicción del gemelo
+  * Indicador de salud de clorofila (0-100%)
+  * Selector de modo (reflectancia/transmitancia)
+  * Controles para simular diferentes estados de hoja
+- Estructura de archivos:
+  /frontend
+    index.html
+    style.css
+    app.js
+    charts.js
+
+MODELO DE GEMELO DIGITAL (SIMPLIFICADO):
+Implementa en twin_model.py:
+1. Función que recibe: concentración de clorofila (Cab), contenido de agua (Cw)
+2. Genera espectro teórico de reflectancia basado en curvas típicas de hojas
+3. Aplica convolución con respuesta espectral del AS7341
+4. Retorna los 11 valores esperados de los canales
+5. Incluye función de comparación: calcula error entre lectura real y predicción
+
+DATOS DEL AS7341:
+Canales y longitudes de onda aproximadas:
+- F1: 415nm (violeta)
+- F2: 445nm (azul) - ABSORCIÓN CLOROFILA
+- F3: 480nm (azul-cian)
+- F4: 515nm (cian-verde)
+- F5: 555nm (verde) - REFLECTANCIA ALTA
+- F6: 590nm (amarillo)
+- F7: 630nm (naranja-rojo)
+- F8: 680nm (rojo) - ABSORCIÓN CLOROFILA
+- NIR: 910nm (infrarrojo cercano)
+- Clear: sin filtro
+- NIR2: 910nm (duplicado)
+
+FUNCIONALIDADES CLAVE:
+1. Modo demostración: genera datos simulados automáticamente
+2. Modo hardware: recibe datos reales del ESP32 vía WebSocket
+3. El gemelo predice qué debería medir el sensor según el estado de la hoja
+4. Muestra discrepancias (posibles anomalías o estrés)
+5. Interfaz intuitiva para ajustar parámetros del modelo (Cab, Cw)
+
+ENTREGABLES:
+1. Código completo y funcional de backend y frontend
+2. Instrucciones de instalación y ejecución
+3. Script para simular datos del ESP32 (sin hardware real)
+4. README con explicación técnica del modelo de gemelo digital
+
+ESTILO DE CÓDIGO:
+- Comentarios claros en español
+- Código modular y bien estructurado
+- Manejo de errores robusto
+- Documentación de funciones clave

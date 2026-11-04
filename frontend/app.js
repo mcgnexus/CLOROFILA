@@ -1,0 +1,167 @@
+/* Cliente WebSocket del dashboard (Fase 3: controles + anomalias). */
+(() => {
+  const badge = document.getElementById("estado-conexion");
+  const elUltima = document.getElementById("ultima-lectura");
+  const elContador = document.getElementById("contador");
+  const elTabla = document.getElementById("tabla-canales");
+  const elRmse = document.getElementById("metrica-rmse");
+  const elRmseRel = document.getElementById("metrica-rmse-rel");
+  const elSesgo = document.getElementById("metrica-sesgo");
+  const elIndice = document.getElementById("indice-valor");
+  const elBarra = document.getElementById("indice-barra");
+  const elAlerta = document.getElementById("alerta-anomalia");
+  const elTarjetaComp = document.getElementById("tarjeta-comparacion");
+  const elModo = document.getElementById("etiqueta-modo");
+  const ctlCab = document.getElementById("control-cab");
+  const ctlCw = document.getElementById("control-cw");
+  const ctlN = document.getElementById("control-n");
+  const elCabVal = document.getElementById("cab-valor");
+  const elCwVal = document.getElementById("cw-valor");
+  const elNVal = document.getElementById("n-valor");
+  const selModo = document.getElementById("selector-modo");
+  const btnEstres = document.getElementById("boton-estres");
+
+  let contador = 0;
+  let temporizadorReconexion = null;
+  let temporizadorEnvio = null;
+
+  const LONGITUD_TXT = { Clear: "banda ancha" };
+
+  function setEstado(texto, clase) {
+    badge.textContent = texto;
+    badge.className = `badge ${clase}`;
+  }
+
+  /** Envía la configuración al backend (con anti-rebote para sliders). */
+  async function enviarConfig(datos) {
+    try {
+      const res = await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(datos),
+      });
+      if (!res.ok) console.warn("Config rechazada:", await res.text());
+    } catch (err) {
+      console.warn("Sin conexión con /api/config:", err);
+    }
+  }
+
+  function programarEnvio(datos) {
+    clearTimeout(temporizadorEnvio);
+    temporizadorEnvio = setTimeout(() => enviarConfig(datos), 250);
+  }
+
+  // --- Controles ---
+  ctlCab.addEventListener("input", () => {
+    elCabVal.textContent = ctlCab.value;
+    programarEnvio({ cab: Number(ctlCab.value) });
+  });
+  ctlCw.addEventListener("input", () => {
+    elCwVal.textContent = Number(ctlCw.value).toFixed(3);
+    programarEnvio({ cw: Number(ctlCw.value) });
+  });
+  ctlN.addEventListener("input", () => {
+    elNVal.textContent = Number(ctlN.value).toFixed(1);
+    programarEnvio({ n: Number(ctlN.value) });
+  });
+  selModo.querySelectorAll("button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selModo.querySelectorAll("button").forEach((b) => b.classList.remove("activo"));
+      btn.classList.add("activo");
+      enviarConfig({ modo: btn.dataset.modo });
+    });
+  });
+  btnEstres.addEventListener("click", () => {
+    const activo = btnEstres.classList.toggle("encendido");
+    btnEstres.textContent = activo ? "Activado" : "Desactivado";
+    enviarConfig({ estres: activo });
+  });
+
+  /** Sincroniza los controles con la config del backend al arrancar. */
+  async function cargarConfig() {
+    try {
+      const res = await fetch("/api/config");
+      const cfg = await res.json();
+      ctlCab.value = cfg.cab;
+      elCabVal.textContent = cfg.cab;
+      ctlCw.value = cfg.cw;
+      elCwVal.textContent = Number(cfg.cw).toFixed(3);
+      ctlN.value = cfg.n;
+      elNVal.textContent = Number(cfg.n).toFixed(1);
+      selModo.querySelectorAll("button").forEach((b) =>
+        b.classList.toggle("activo", b.dataset.modo === cfg.modo));
+      btnEstres.classList.toggle("encendido", cfg.estres);
+      btnEstres.textContent = cfg.estres ? "Activado" : "Desactivado";
+    } catch (err) {
+      console.warn("No se pudo cargar /api/config:", err);
+    }
+  }
+
+  function pintarTabla(msg) {
+    const errores = (msg.comparacion && msg.comparacion.error_por_canal) || {};
+    elTabla.innerHTML = msg.orden_canales.map((c) => {
+      const wl = msg.longitudes_onda[c];
+      const etiqueta = LONGITUD_TXT[c] || `${wl} nm`;
+      const pred = msg.prediccion ? msg.prediccion[c] : "—";
+      const err = errores[c] !== undefined ? errores[c] : "—";
+      return `<div class="canal">
+        <div class="nombre">${c}</div>
+        <div class="longitud">${etiqueta}</div>
+        <div class="valor">${msg.canales[c]}</div>
+        <div class="pred">gemelo: ${pred} · Δ ${err}</div>
+      </div>`;
+    }).join("");
+  }
+
+  function pintarComparacion(msg) {
+    if (!msg.comparacion) return;
+    elRmse.textContent = msg.comparacion.rmse;
+    elRmseRel.textContent = `${(msg.comparacion.rmse_rel * 100).toFixed(1)} %`;
+    elSesgo.textContent = msg.comparacion.sesgo;
+    const hayAnomalia = !!msg.anomalia;
+    elAlerta.classList.toggle("oculto", !hayAnomalia);
+    elTarjetaComp.classList.toggle("alerta-fondo", hayAnomalia);
+    if (msg.gemelo) {
+      elIndice.textContent = `${msg.gemelo.indice_clorofila} / 100`;
+      elBarra.style.width = `${msg.gemelo.indice_clorofila}%`;
+      elModo.textContent = msg.gemelo.modo || "—";
+    }
+  }
+
+  function conectar() {
+    // Mismo host/puerto que sirve la pagina; funciona en local y en red.
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    const url = `${proto}://${location.host}/ws`;
+    const ws = new WebSocket(url);
+
+    ws.onopen = () => {
+      setEstado("Conectado", "conectado");
+      if (temporizadorReconexion) {
+        clearTimeout(temporizadorReconexion);
+        temporizadorReconexion = null;
+      }
+    };
+
+    ws.onmessage = (ev) => {
+      const msg = JSON.parse(ev.data);
+      contador += 1;
+      elContador.textContent = contador;
+      elUltima.textContent = new Date(msg.timestamp).toLocaleTimeString();
+      actualizarGrafico(msg);
+      pintarTabla(msg);
+      pintarComparacion(msg);
+    };
+
+    ws.onclose = () => {
+      setEstado("Reintentando…", "reintentando");
+      // Reconexion automatica con espera de 2 s.
+      temporizadorReconexion = setTimeout(conectar, 2000);
+    };
+
+    ws.onerror = () => ws.close();
+  }
+
+  setEstado("Desconectado", "desconectado");
+  cargarConfig();
+  conectar();
+})();

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gemelo Digital Clorofila — Fase 3</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Gemelo Digital Clorofila <span class="fase">Fase 3 · Final</span></h1>
+    <div class="cabecera-derecha">
+      <span id="etiqueta-modo" class="modo">reflectancia</span>
+      <div id="estado-conexion" class="badge desconectado">Desconectado</div>
+    </div>
+  </header>
+
+  <main>
+    <section class="tarjeta controles">
+      <h2>Controles del gemelo</h2>
+      <div class="rejilla-controles">
+        <label class="control">
+          <span>Clorofila (Cab): <strong id="cab-valor">45</strong> µg/cm²</span>
+          <input type="range" id="control-cab" min="5" max="80" step="1" value="45" />
+        </label>
+        <label class="control">
+          <span>Agua (Cw): <strong id="cw-valor">0.015</strong> cm</span>
+          <input type="range" id="control-cw" min="0.005" max="0.05" step="0.001" value="0.015" />
+        </label>
+        <label class="control">
+          <span>Estructura (N): <strong id="n-valor">1.5</strong></span>
+          <input type="range" id="control-n" min="1" max="2.5" step="0.1" value="1.5" />
+        </label>
+        <div class="control">
+          <span>Modo óptico</span>
+          <div class="segmentado" id="selector-modo">
+            <button data-modo="reflectancia" class="activo">Reflectancia</button>
+            <button data-modo="transmitancia">Transmitancia</button>
+          </div>
+        </div>
+        <div class="control">
+          <span>Estrés simulado</span>
+          <button id="boton-estres" class="interruptor">Desactivado</button>
+        </div>
+      </div>
+      <p class="meta">Los cambios se aplican al gemelo y al simulador. El aviso de anomalía salta cuando el error relativo supera el 10 %.</p>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Espectro: medido vs. predicción del gemelo</h2>
+      <div id="alerta-anomalia" class="alerta oculto">⚠ Posible anomalía o estrés: la lectura se aparta del gemelo</div>
+      <canvas id="grafico-espectro"></canvas>
+      <p class="meta">
+        Última lectura: <span id="ultima-lectura">—</span>
+        · Mensajes recibidos: <span id="contador">0</span>
+      </p>
+    </section>
+
+    <div class="fila">
+      <section class="tarjeta" id="tarjeta-comparacion">
+        <h2>Comparación real vs. predicción</h2>
+        <div class="metricas">
+          <div class="metrica"><span class="etiqueta">RMSE</span><span id="metrica-rmse" class="numero">—</span></div>
+          <div class="metrica"><span class="etiqueta">Error relativo</span><span id="metrica-rmse-rel" class="numero">—</span></div>
+          <div class="metrica"><span class="etiqueta">Sesgo medio</span><span id="metrica-sesgo" class="numero">—</span></div>
+        </div>
+        <p class="meta">Diferencias en cuentas ADC sobre los 10 canales.</p>
+      </section>
+
+      <section class="tarjeta">
+        <h2>Indicador de clorofila</h2>
+        <div class="indice-numero" id="indice-valor">— / 100</div>
+        <div class="indice-fondo"><div class="indice-relleno" id="indice-barra"></div></div>
+        <p class="meta aviso">Estimación demostrativa a partir de Cab, no un diagnóstico agronómico calibrado.</p>
+      </section>
+    </div>
+
+    <section class="tarjeta">
+      <h2>Valores por canal (medido · gemelo · Δ)</h2>
+      <div id="tabla-canales" class="rejilla-canales"></div>
+    </section>
+  </main>
+
+  <script src="/static/charts.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
