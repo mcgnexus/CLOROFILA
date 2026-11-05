@@ -14,8 +14,8 @@ backend/
   sensor_simulator.py  # Simulador AS7341 basado en el gemelo (+ modo estrés)
   dataset_sintetico.py # Generador de dataset sintetico (hojas virtuales)
   ridge.py             # Ridge con numpy puro (sin sklearn)
-  prospect.py          # PROSPECT-D: formalismo real (E1, Fresnel, Stokes)
-  prospect_datos.py    # Coeficientes de trabajo aproximados (sustituibles)
+  prospect.py          # PROSPECT-D oficial (adapter de prospect_oficial)
+  prospect_oficial/    # Tablas oficiales + matematicas contrastadas (GPLv3)
   entrenar_cab.py      # Entrena regresor base Cab <- canales
   modelo_ml.py         # Inferencia: carga el .npz y estima Cab
   requirements.txt
@@ -89,23 +89,28 @@ Mensaje WS:
    `rmse_rel > 0.10`.
 7. **Índice 0–100**: normalización lineal de Cab (5→0, 80→100).
 
-## Modelo PROSPECT-D (`prospect.py` + `prospect_datos.py`)
+## Modelo PROSPECT-D oficial (`prospect_oficial/`)
 
-Implementación propia del formalismo real de PROSPECT (Jacquemoud &
-Baret 1990; Féret et al. 2017): hoja como apilamiento de N capas,
-interfaces con Fresnel promediado para luz difusa (r12 ≈ 0.093 para
-n = 1.5, verificado), transmitancia interna exacta de la capa
-`τ = (1−k)e^(−k) + k²·E1(k)` (E1 propia, sin scipy) y apilado con las
-ecuaciones de Stokes (N fraccionario por interpolación).
+Matemáticas de PROSPECT-D (Jacquemoud & Baret 1990; Féret et al. 2017)
+con las **tablas oficiales** (`prospect_d_spectra.txt` de prosail 2.0.5,
+SHA256 verificado al cargar; ver `PROCEDENCIA.md`): `calctav`
+(Stern 1964, Allen 1973), capa de Allen et al. (1969) y apilado exacto
+de N fraccionario con Stokes (1862).
 
-Parámetros: N, Cab, Car, Cant, Cbrown, Cw, Cm. Verificado: `máx(R+T) =
-0.84 ≤ 1` en 200 hojas aleatorias; Cab↑ ⇒ R↓ en azul/rojo; N↑ ⇒ R↑ y
-T↓; ~3 ms por hoja (10.000 hojas en ~35 s).
+**Contraste ejecutado** contra el código real de prosail 2.0.5
+(descargado de PyPI/GitHub, ejecutado sin instalar): 60 hojas aleatorias
+con N fraccionario + 4 casos borde ⇒ **diferencia bit a bit 0.00e+00**
+en R y T (400–2500 nm). Los avisos numéricos en regímenes extremos son
+idénticos en ambas implementaciones.
 
-**Límite clave:** los coeficientes de absorción son **aproximados de
-trabajo** (picos documentados en literatura), no las tablas oficiales
-de Féret et al. 2017. Están aislados en `prospect_datos.py` para
-sustituirlos sin tocar las matemáticas.
+Distancia con el antiguo modelo heurístico (canales AS7341): MAE de
+330–623 cuentas según Cab (p. ej. Cab=40: F5 1378→612, F8 305→379).
+El heurístico **no** era equivalente a PROSPECT-D y queda relegado a
+demo del dashboard (`twin_model.py`).
+
+Parámetros: N, Cab, Car, Cant, Cbrown, Cw, Cm. Verificado además:
+`máx(R+T) ≤ 1` en 200 hojas aleatorias; Cab↑ ⇒ R↓ en azul/rojo;
+N↑ ⇒ R↑ y T↓.
 
 ## Dataset sintético y modelo ML (inversión Cab <- AS7341)
 
@@ -134,7 +139,7 @@ Resultados (test intacto, n=1500):
 | Fuente      | Baseline MAE | Ridge MAE | Ridge RMSE | λ     |
 |-------------|--------------|-----------|------------|-------|
 | heurístico  | 18.81        | 3.71      | 4.59       | 0.01  |
-| PROSPECT-D  | 18.81        | 7.76      | 9.54       | 0.01  |
+| PROSPECT-D oficial | 18.81 | 6.54      | 8.09       | 10.0  |
 
 El dataset PROSPECT es más difícil porque 6 parámetros varían y
 confunden a Cab (p. ej. carotenoides en el azul, N en todo el espectro):
@@ -144,7 +149,10 @@ es el efecto físico esperado, no un error. Detalle en `modelos/*.metricas.json`
 campo); el bandpass por sí solo no reproduce el hardware real (falta
 iluminación, ganancia e integración); Cw y N actúan como variabilidad,
 no como magnitudes recuperables con este sensor. Hacen falta muestras
-reales con Cab de referencia para validar.
+reales con Cab de referencia para validar. Comparación directa contra el
+paquete R de los autores, pendiente (requiere R; aquí se contrastó contra
+la implementación Python `prosail`, que declara como referencia los
+códigos originales de Jussieu).
 
 ## Modo hardware (ESP32 real)
 
@@ -167,4 +175,6 @@ que el `FACTOR_CALIBRACION` supuesto).
   (no PROSPECT-D); PROSPECT-D vive en `prospect.py` para el dataset ML.
   Ninguno implica recuperar Cab, Cw y N de forma única con estos canales.
 - Umbral de anomalía (10 %) arbitrario para la demo.
+- `prospect_oficial/` se distribuye bajo **GPLv3** (tablas y estructura
+  de `prosail`, Copyright J Gomez-Dans 2017-2018); ver `PROCEDENCIA.md`.
 - Sin persistencia: no hay base de datos ni históricos (trabajo futuro).
