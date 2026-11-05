@@ -297,8 +297,10 @@ async def raiz():
     return FileResponse(FRONTEND_DIR / "index.html")
 
 
-# Tutorial de uso, accesible con el boton "Ayuda" del dashboard.
-@app.get("/tutorial")
+# Tutorial de uso (boton "Ayuda" del dashboard).
+# En Vercel lo sirve el CDN como /tutorial.html; esta ruta cubre el
+# desarrollo local (uvicorn) donde no hay CDN.
+@app.get("/tutorial.html", include_in_schema=False)
 async def tutorial():
     return FileResponse(FRONTEND_DIR / "tutorial.html")
 
