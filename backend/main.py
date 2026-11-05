@@ -55,9 +55,31 @@ config = {
 
 app = FastAPI(title="Gemelo Digital Clorofila - Fase 4 (PROSPECT-D)")
 
-# El frontend se sirve desde ../frontend
+# El frontend vive en backend/public (dentro del paquete, para que Vercel
+# lo incluya en el bundle de la funcion). En local lo sirve FastAPI.
 BASE_DIR = Path(__file__).resolve().parent
-FRONTEND_DIR = BASE_DIR.parent / "frontend"
+
+
+def _resolver_frontend() -> Path:
+    """Localiza el directorio del frontend en cualquier layout."""
+    candidatos = [
+        BASE_DIR / "public",
+        BASE_DIR.parent / "public",
+        Path.cwd() / "public",
+        Path.cwd() / "backend" / "public",
+        Path("/var/task/public"),
+        Path("/var/task/backend/public"),
+    ]
+    for c in candidatos:
+        if (c / "index.html").is_file():
+            return c
+    log.warning("frontend no encontrado en %s", candidatos)
+    return candidatos[0]
+
+
+FRONTEND_DIR = _resolver_frontend()
+log.info("FRONTEND_DIR=%s index.html=%s", FRONTEND_DIR,
+         (FRONTEND_DIR / "index.html").is_file())
 
 simulador = SimuladorAS7341(cab_base=config["hoja"]["cab_base"],
                             cw=config["hoja"]["cw"],

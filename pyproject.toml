@@ -1,0 +1,14 @@
+[project]
+name = "clorofila"
+version = "4.0.0"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.29",
+  "websockets>=12.0",
+  "numpy>=1.26",
+  "scipy>=1.10",
+]
+
+[tool.vercel]
+entrypoint = "backend.main:app"

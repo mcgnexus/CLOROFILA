@@ -22,11 +22,12 @@ backend/
   requirements.txt
   data/                # dataset.csv + .meta.json (generado, no versionar)
   modelos/             # cab_ridge.npz + metricas (generado, no versionar)
-frontend/
+backend/public/          # Frontend (dentro del paquete para el bundle; ver nota Vercel)
   index.html           # Controles + espectro doble + métricas + indicador
-  style.css
-  app.js               # WS con reconexión + controles via POST /api/config
-  charts.js            # Espectro superpuesto medido vs. gemelo (Chart.js)
+  static/
+    style.css
+    app.js             # WS con reconexión + fallback a sondeo + POST /api/config
+    charts.js          # Espectro superpuesto medido vs. gemelo (Chart.js)
 ```
 
 ## Instalación
