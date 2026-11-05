@@ -190,51 +190,72 @@ def _estimar_cab_ml(canales: dict, modo: str) -> float | None:
         return None
 
 
+def _construir_mensaje() -> dict:
+    """Construye un mensaje completo lectura+prediccion+ML.
+
+    Misma forma para el WebSocket (/ws, cada segundo) y el sondeo
+    REST (/api/lectura, para plataformas sin WebSocket como Vercel).
+    Lanza ValueError si la prediccion no es finita.
+    """
+    lectura = simulador.generar_lectura()
+    g = config["gemelo"]
+    prediccion = predecir_canales_prospect(
+        g["cab"], g["cw"], g["n"], config["modo"], **EXTRAS_POR_DEFECTO)
+    comparacion = comparar_lectura(lectura["canales"], prediccion)
+    anomalia = comparacion["rmse_rel"] > UMBRAL_ANOMALIA
+    return {
+        "timestamp": lectura["timestamp"],
+        "canales": lectura["canales"],
+        "prediccion": prediccion,
+        "comparacion": comparacion,
+        "anomalia": anomalia,
+        "cab_estimado_ml": _estimar_cab_ml(lectura["canales"],
+                                          config["modo"]),
+        "gemelo": {
+            "cab": g["cab"],
+            "cw": g["cw"],
+            "n": g["n"],
+            "modo": config["modo"],
+            "indice_clorofila": indice_clorofila(g["cab"]),
+        },
+        "hoja": {
+            "cab_base": config["hoja"]["cab_base"],
+            "cab_verdadero": lectura.get("cab_verdadero"),
+            "cw": config["hoja"]["cw"],
+            "n": config["hoja"]["n"],
+        },
+        # Compatibilidad: cab_verdadero tambien en la raiz.
+        "cab_verdadero": lectura.get("cab_verdadero"),
+        "estres_simulado": lectura.get("estres", False),
+        "longitudes_onda": lectura["longitudes_onda"],
+        "orden_canales": lectura["orden_canales"],
+    }
+
+
+@app.get("/api/lectura")
+async def lectura_unica():
+    """Una lectura completa (igual forma que cada mensaje de /ws).
+
+    Pensado para sondeo donde no hay WebSocket (p. ej. Vercel
+    serverless). El frontend lo usa como reserva automatica.
+    """
+    try:
+        return _construir_mensaje()
+    except ValueError as exc:
+        return JSONResponse(status_code=400, content={"error": str(exc)})
+
+
 @app.websocket("/ws")
 async def websocket_datos(websocket: WebSocket):
     """Envia lectura + prediccion oficial + comparacion + Cab ML."""
     await websocket.accept()
     try:
         while True:
-            lectura = simulador.generar_lectura()
-            g = config["gemelo"]
             try:
-                prediccion = predecir_canales_prospect(
-                    g["cab"], g["cw"], g["n"], config["modo"],
-                    **EXTRAS_POR_DEFECTO)
+                await websocket.send_json(_construir_mensaje())
             except ValueError as exc:
-                log.error("Prediccion invalida (gemelo=%s): %s", g, exc)
-                await asyncio.sleep(INTERVALO_ENVIO)
-                continue
-            comparacion = comparar_lectura(lectura["canales"], prediccion)
-            anomalia = comparacion["rmse_rel"] > UMBRAL_ANOMALIA
-            await websocket.send_json({
-                "timestamp": lectura["timestamp"],
-                "canales": lectura["canales"],
-                "prediccion": prediccion,
-                "comparacion": comparacion,
-                "anomalia": anomalia,
-                "cab_estimado_ml": _estimar_cab_ml(lectura["canales"],
-                                                  config["modo"]),
-                "gemelo": {
-                    "cab": g["cab"],
-                    "cw": g["cw"],
-                    "n": g["n"],
-                    "modo": config["modo"],
-                    "indice_clorofila": indice_clorofila(g["cab"]),
-                },
-                "hoja": {
-                    "cab_base": config["hoja"]["cab_base"],
-                    "cab_verdadero": lectura.get("cab_verdadero"),
-                    "cw": config["hoja"]["cw"],
-                    "n": config["hoja"]["n"],
-                },
-                # Compatibilidad: cab_verdadero tambien en la raiz.
-                "cab_verdadero": lectura.get("cab_verdadero"),
-                "estres_simulado": lectura.get("estres", False),
-                "longitudes_onda": lectura["longitudes_onda"],
-                "orden_canales": lectura["orden_canales"],
-            })
+                log.error("Prediccion invalida (gemelo=%s): %s",
+                          config["gemelo"], exc)
             await asyncio.sleep(INTERVALO_ENVIO)
     except WebSocketDisconnect:
         # Cliente desconectado: salida limpia del bucle.

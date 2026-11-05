@@ -160,6 +160,28 @@ reales con Cab de referencia para validar. El contraste contra el
 paquete R de los autores **está ejecutado**: coincidencia a 2.15e-15
 en 12 casos (ver `backend/validacion/` y `PROCEDENCIA.md`).
 
+## Despliegue en Vercel
+
+Vercel serverless **no admite WebSockets**, por eso el frontend usa
+`/ws` en local y pasa solo a sondeo `GET /api/lectura` (cada 2 s)
+cuando el WebSocket no abre. El modelo ML viaja en el repo
+(`backend/modelos/cab_ridge_prospect.npz`, 2 KB) para que el
+despliegue tenga estimación de Cab sin regenerar nada.
+
+```powershell
+vercel login
+vercel deploy
+```
+
+Notas:
+
+- `vercel.json` dirige todo el tráfico a `backend/main.py` (sirve el
+  frontend y la API desde el mismo proceso).
+- Las dependencias salen de `backend/requirements.txt` (incluye scipy).
+- `backend/data/*.csv` no se versiona; el simulador genera al vuelo.
+- Límites del plan hobby: arranque en frío de 1-2 s (numpy/scipy) y
+  cadencia de sondeo de 2 s; es una demo, no telemetría crítica.
+
 ## Modo hardware (ESP32 real)
 
 El simulador es intercambiable: basta con sustituir `generar_lectura()` por

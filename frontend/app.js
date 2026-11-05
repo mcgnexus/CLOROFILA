@@ -27,9 +27,13 @@
 
   let contador = 0;
   let temporizadorReconexion = null;
+  let temporizadorSondeo = null;
+  let temporizadorEsperaWs = null;
+  let transporte = "websocket"; // o "sondeo" si no hay WebSocket (p. ej. Vercel)
   // Un temporizador por clave: cambios rapidos en distintos controles
   // ya no se pisan entre si (antes habia un solo temporizador global).
   const temporizadores = {};
+  const INTERVALO_SONDEO = 2000;
 
   const LONGITUD_TXT = { Clear: "banda ancha" };
 
@@ -148,13 +152,58 @@
       : `${msg.cab_estimado_ml} µg/cm²`;
   }
 
+  function pintarMensaje(msg) {
+    contador += 1;
+    elContador.textContent = contador;
+    elUltima.textContent = new Date(msg.timestamp).toLocaleTimeString();
+    actualizarGrafico(msg);
+    pintarTabla(msg);
+    pintarComparacion(msg);
+  }
+
+  /** Sondeo REST como reserva cuando no hay WebSocket (Vercel serverless). */
+  function iniciarSondeo() {
+    if (temporizadorSondeo) return;
+    transporte = "sondeo";
+    const elTransporte = document.getElementById("transporte");
+    if (elTransporte) elTransporte.textContent = "sondeo 2 s";
+    setEstado("Conectado (sondeo)", "conectado");
+    const sondear = async () => {
+      try {
+        const res = await fetch("/api/lectura");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        pintarMensaje(await res.json());
+      } catch (err) {
+        console.warn("Fallo de sondeo:", err);
+      }
+    };
+    sondear();
+    temporizadorSondeo = setInterval(sondear, INTERVALO_SONDEO);
+  }
   function conectar() {
     // Mismo host/puerto que sirve la pagina; funciona en local y en red.
     const proto = location.protocol === "https:" ? "wss" : "ws";
     const url = `${proto}://${location.host}/ws`;
     const ws = new WebSocket(url);
 
+    // Si el WebSocket no abre (p. ej. Vercel serverless, sin WS),
+    // se pasa a sondeo REST en vez de reintentar para siempre.
+    clearTimeout(temporizadorEsperaWs);
+    temporizadorEsperaWs = setTimeout(() => {
+      if (transporte === "websocket" && contador === 0) {
+        try { ws.close(); } catch (_) { /* ya cerrado */ }
+        const fallos = (conectar.fallos = (conectar.fallos || 0) + 1);
+        if (fallos >= 2) {
+          iniciarSondeo();
+        } else {
+          temporizadorReconexion = setTimeout(conectar, 2000);
+        }
+      }
+    }, 5000);
+
     ws.onopen = () => {
+      conectar.fallos = 0;
+      clearTimeout(temporizadorEsperaWs);
       setEstado("Conectado", "conectado");
       if (temporizadorReconexion) {
         clearTimeout(temporizadorReconexion);
@@ -162,20 +211,14 @@
       }
     };
 
-    ws.onmessage = (ev) => {
-      const msg = JSON.parse(ev.data);
-      contador += 1;
-      elContador.textContent = contador;
-      elUltima.textContent = new Date(msg.timestamp).toLocaleTimeString();
-      actualizarGrafico(msg);
-      pintarTabla(msg);
-      pintarComparacion(msg);
-    };
+    ws.onmessage = (ev) => pintarMensaje(JSON.parse(ev.data));
 
     ws.onclose = () => {
-      setEstado("Reintentando…", "reintentando");
-      // Reconexion automatica con espera de 2 s.
-      temporizadorReconexion = setTimeout(conectar, 2000);
+      if (transporte !== "sondeo" && contador > 0) {
+        setEstado("Reintentando…", "reintentando");
+        // Reconexion automatica con espera de 2 s.
+        temporizadorReconexion = setTimeout(conectar, 2000);
+      }
     };
 
     ws.onerror = () => ws.close();

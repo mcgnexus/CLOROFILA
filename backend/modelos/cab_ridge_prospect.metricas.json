@@ -1,0 +1,35 @@
+{
+  "lambda": 10.0,
+  "columnas": [
+    "F1",
+    "F2",
+    "F3",
+    "F4",
+    "F5",
+    "F6",
+    "F7",
+    "F8",
+    "Clear",
+    "NIR"
+  ],
+  "baseline_mae_test": 18.808,
+  "metricas": {
+    "train": {
+      "mae": 6.489,
+      "rmse": 8.096,
+      "n": 7000
+    },
+    "val": {
+      "mae": 6.58,
+      "rmse": 8.171,
+      "n": 1500
+    },
+    "test": {
+      "mae": 6.535,
+      "rmse": 8.093,
+      "n": 1500
+    }
+  },
+  "unidades": "µg/cm²",
+  "advertencia": "Evaluado en datos del mismo simulador; optimista frente a campo real."
+}
