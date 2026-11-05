@@ -154,6 +154,25 @@ main {
 
 .control input[type="range"] { width: 100%; accent-color: var(--acento); }
 
+.hoja-dato {
+  background: #12181e;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  font-variant-numeric: tabular-nums;
+}
+
+button.secundario {
+  background: #12181e;
+  color: var(--texto);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  cursor: pointer;
+}
+
+button.secundario:hover { border-color: var(--acento); }
+
 .segmentado { display: flex; gap: 0.4rem; }
 
 .segmentado button {

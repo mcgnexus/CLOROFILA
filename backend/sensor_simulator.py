@@ -1,36 +1,38 @@
-"""Simulador del sensor espectral AS7341 (FASE 3).
+"""Simulador del sensor espectral AS7341 (PROSPECT-D oficial).
 
-Genera lecturas sinteticas a partir del gemelo digital (twin_model):
-toma la prediccion teorica para un estado de hoja (Cab, Cw, modo) y le
-suma deriva instrumental lenta + ruido gaussiano. Opcionalmente simula
-estres (caida del NIR, subida del rojo, clorosis en el verde) para
-demostrar la deteccion de anomalias del gemelo.
+Genera lecturas sinteticas a partir de PROSPECT-D oficial: toma la
+prediccion teorica para el estado verdadero de la hoja (Cab, Cw, N,
+modo) y le suma deriva instrumental lenta + ruido gaussiano.
+Opcionalmente simula estres (firma relativa: caida del NIR,
+enrojecimiento y clorosis) para demostrar la deteccion de anomalias.
 """
 import math
 import random
 import time
 from datetime import datetime, timezone
 
-from twin_model import (
-    LONGITUDES_ONDA,
+from prospect import (
+    EXTRAS_POR_DEFECTO,
+    LONGITUDES as LONGITUDES_ONDA,
     MODOS_VALIDOS,
-    N_REF,
     ORDEN_CANALES,
-    predecir_canales,
+    predecir_canales_prospect,
 )
+from twin_model import N_REF
 
-# Deriva instrumental residual por canal (ademas de la deriva de Cab).
+# Deriva instrumental residual por canal (~2 % del nivel tipico oficial;
+# la escala absoluta cambio al pasar a PROSPECT-D: F5~566, NIR~2282).
 AMPLITUD_DERIVA = {
-    "F1": 15,
-    "F2": 15,
-    "F3": 20,
-    "F4": 40,
-    "F5": 70,
-    "F6": 50,
-    "F7": 35,
-    "F8": 20,
-    "Clear": 100,
-    "NIR": 90,
+    "F1": 4,
+    "F2": 4,
+    "F3": 5,
+    "F4": 9,
+    "F5": 12,
+    "F6": 8,
+    "F7": 6,
+    "F8": 7,
+    "Clear": 20,
+    "NIR": 45,
 }
 
 # Desviacion tipica del ruido gaussiano por canal.
@@ -116,17 +118,20 @@ class SimuladorAS7341:
         """
         modo_efectivo = modo or self.modo
         t = time.monotonic() - self._t0
-        # Deriva lenta del estado verdadero de la hoja (periodo 60 s).
-        self.cab_actual = self.cab_base + 4.0 * math.sin(2 * math.pi * t / 60.0)
-        base = predecir_canales(self.cab_actual, self.cw, modo_efectivo, self.n)
-        # Firma de estres: colapso parcial del NIR, enrojecimiento y
-        # perdida del pico verde (patron tipico simplificado).
+        # Deriva lenta del estado verdadero de la hoja (periodo 60 s,
+        # ±2 µg/cm2: visible en el dashboard sin disparar la anomalia).
+        self.cab_actual = self.cab_base + 2.0 * math.sin(2 * math.pi * t / 60.0)
+        base = predecir_canales_prospect(
+            self.cab_actual, self.cw, self.n, modo_efectivo,
+            **EXTRAS_POR_DEFECTO)
+        # Firma de estres RELATIVA (independiente de la escala absoluta):
+        # colapso parcial del NIR, enrojecimiento y perdida del verde.
         if self.estres:
             base = dict(base)
             base["NIR"] = int(base["NIR"] * 0.82)
-            base["F8"] = base["F8"] + 120
-            base["F7"] = base["F7"] + 60
-            base["F5"] = max(0, base["F5"] - 150)
+            base["F8"] = int(base["F8"] * 1.30)
+            base["F7"] = int(base["F7"] * 1.15)
+            base["F5"] = int(base["F5"] * 0.75)
         canales = {}
         for i, canal in enumerate(ORDEN_CANALES):
             deriva = AMPLITUD_DERIVA[canal] * math.sin(2 * math.pi * t / 20.0 + i * 0.6)

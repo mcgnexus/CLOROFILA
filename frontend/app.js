@@ -1,4 +1,4 @@
-/* Cliente WebSocket del dashboard (Fase 3: controles + anomalias). */
+/* Cliente WebSocket del dashboard (Fase 4: PROSPECT-D + ML). */
 (() => {
   const badge = document.getElementById("estado-conexion");
   const elUltima = document.getElementById("ultima-lectura");
@@ -20,10 +20,16 @@
   const elNVal = document.getElementById("n-valor");
   const selModo = document.getElementById("selector-modo");
   const btnEstres = document.getElementById("boton-estres");
+  const btnSync = document.getElementById("boton-sincronizar");
+  const elHojaCab = document.getElementById("hoja-cab");
+  const elGemeloCab = document.getElementById("gemelo-cab");
+  const elMlCab = document.getElementById("ml-cab");
 
   let contador = 0;
   let temporizadorReconexion = null;
-  let temporizadorEnvio = null;
+  // Un temporizador por clave: cambios rapidos en distintos controles
+  // ya no se pisan entre si (antes habia un solo temporizador global).
+  const temporizadores = {};
 
   const LONGITUD_TXT = { Clear: "banda ancha" };
 
@@ -32,7 +38,7 @@
     badge.className = `badge ${clase}`;
   }
 
-  /** Envía la configuración al backend (con anti-rebote para sliders). */
+  /** Envía la configuración al backend (con anti-rebote por clave). */
   async function enviarConfig(datos) {
     try {
       const res = await fetch("/api/config", {
@@ -46,23 +52,23 @@
     }
   }
 
-  function programarEnvio(datos) {
-    clearTimeout(temporizadorEnvio);
-    temporizadorEnvio = setTimeout(() => enviarConfig(datos), 250);
+  function programarEnvio(clave, datos) {
+    clearTimeout(temporizadores[clave]);
+    temporizadores[clave] = setTimeout(() => enviarConfig(datos), 250);
   }
 
-  // --- Controles ---
+  // --- Controles (mueven SOLO el gemelo) ---
   ctlCab.addEventListener("input", () => {
     elCabVal.textContent = ctlCab.value;
-    programarEnvio({ cab: Number(ctlCab.value) });
+    programarEnvio("cab", { cab: Number(ctlCab.value) });
   });
   ctlCw.addEventListener("input", () => {
     elCwVal.textContent = Number(ctlCw.value).toFixed(3);
-    programarEnvio({ cw: Number(ctlCw.value) });
+    programarEnvio("cw", { cw: Number(ctlCw.value) });
   });
   ctlN.addEventListener("input", () => {
     elNVal.textContent = Number(ctlN.value).toFixed(1);
-    programarEnvio({ n: Number(ctlN.value) });
+    programarEnvio("n", { n: Number(ctlN.value) });
   });
   selModo.querySelectorAll("button").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -76,18 +82,23 @@
     btnEstres.textContent = activo ? "Activado" : "Desactivado";
     enviarConfig({ estres: activo });
   });
+  btnSync.addEventListener("click", () => {
+    enviarConfig({ sincronizar: true });
+    setTimeout(cargarConfig, 400); // relee el gemelo ya alineado
+  });
 
   /** Sincroniza los controles con la config del backend al arrancar. */
   async function cargarConfig() {
     try {
       const res = await fetch("/api/config");
       const cfg = await res.json();
-      ctlCab.value = cfg.cab;
-      elCabVal.textContent = cfg.cab;
-      ctlCw.value = cfg.cw;
-      elCwVal.textContent = Number(cfg.cw).toFixed(3);
-      ctlN.value = cfg.n;
-      elNVal.textContent = Number(cfg.n).toFixed(1);
+      const g = cfg.gemelo || cfg; // compatibilidad con formato plano
+      ctlCab.value = g.cab;
+      elCabVal.textContent = g.cab;
+      ctlCw.value = g.cw;
+      elCwVal.textContent = Number(g.cw).toFixed(3);
+      ctlN.value = g.n;
+      elNVal.textContent = Number(g.n).toFixed(1);
       selModo.querySelectorAll("button").forEach((b) =>
         b.classList.toggle("activo", b.dataset.modo === cfg.modo));
       btnEstres.classList.toggle("encendido", cfg.estres);
@@ -125,7 +136,16 @@
       elIndice.textContent = `${msg.gemelo.indice_clorofila} / 100`;
       elBarra.style.width = `${msg.gemelo.indice_clorofila}%`;
       elModo.textContent = msg.gemelo.modo || "—";
+      elGemeloCab.textContent = msg.gemelo.cab;
     }
+    if (msg.hoja) {
+      elHojaCab.textContent = msg.hoja.cab_verdadero ?? msg.hoja.cab_base;
+    }
+    // ML: null en transmitancia o sin modelo -> "no disponible".
+    elMlCab.textContent = (msg.cab_estimado_ml === null ||
+      msg.cab_estimado_ml === undefined)
+      ? "no disponible"
+      : `${msg.cab_estimado_ml} µg/cm²`;
   }
 
   function conectar() {

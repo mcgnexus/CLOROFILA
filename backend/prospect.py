@@ -18,7 +18,12 @@ from twin_model import (
 )
 
 __all__ = ["prospect_d", "predecir_canales_prospect",
-           "canales_a_reflectancia", "LONGITUDES"]
+           "canales_a_reflectancia", "LONGITUDES", "EXTRAS_POR_DEFECTO"]
+
+# Parametros PROSPECT-D secundarios fijos para la demo (dentro del rango
+# de entrenamiento del modelo ML: car U(2,16), cant U(0,2), cm U(0.003,0.012)).
+# Gemelo y simulador usan los mismos para que la comparacion sea directa.
+EXTRAS_POR_DEFECTO = {"car": 8.0, "cant": 1.0, "cbrown": 0.0, "cm": 0.005}
 
 
 def prospect_d(cab: float, car: float = 8.0, cant: float = 1.0,
@@ -47,6 +52,11 @@ def predecir_canales_prospect(cab: float, cw: float, n: float = 1.5,
         raise ValueError(f"modo debe ser uno de {MODOS_VALIDOS}")
     _, r, t = prospect_d(cab, car, cant, cbrown, cw, cm, n)
     espectro = r if modo == "reflectancia" else t
+    if not np.all(np.isfinite(espectro)):
+        # Falla en voz alta: un NaN/inf aqui indicaria parametros fuera
+        # del dominio fisico o un error numerico, no una medida valida.
+        raise ValueError("espectro PROSPECT-D no finito para "
+                         f"(cab={cab}, cw={cw}, n={n}, modo={modo})")
     pred = {}
     for canal in ORDEN_CANALES:
         if canal == "Clear":

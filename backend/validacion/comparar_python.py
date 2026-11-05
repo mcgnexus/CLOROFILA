@@ -27,7 +27,11 @@ for i, g in enumerate(grid, start=1):
                      float(g["brown"]), float(g["ewt"]), float(g["lma"]),
                      float(g["ant"]))
     assert np.array_equal(w, lm), "mallas distintas"
-    max_r = max(max_r, float(np.nanmax(np.abs(rr - rm))))
-    max_t = max(max_t, float(np.nanmax(np.abs(tr - tm))))
+    # Estricto: mismos NaN en ambos Y diferencia maxima < 1e-9 en finitos.
+    assert np.array_equal(np.isnan(rr), np.isnan(rm)), f"NaN distintos en R caso {i}"
+    assert np.array_equal(np.isnan(tr), np.isnan(tm)), f"NaN distintos en T caso {i}"
+    er = float(np.max(np.abs(rr[~np.isnan(rr)] - rm[~np.isnan(rm)])))
+    et = float(np.max(np.abs(tr[~np.isnan(tr)] - tm[~np.isnan(tm)])))
+    max_r, max_t = max(max_r, er), max(max_t, et)
 print("GLOBAL max|dR|=%.2e max|dT|=%.2e" % (max_r, max_t))
 print("OK" if max(max_r, max_t) < 1e-9 else "DIVERGENCIA")

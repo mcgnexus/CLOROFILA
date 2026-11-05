@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gemelo Digital Clorofila — Fase 3</title>
+  <title>Gemelo Digital Clorofila — Fase 4 (PROSPECT-D)</title>
   <link rel="stylesheet" href="/static/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <header>
-    <h1>Gemelo Digital Clorofila <span class="fase">Fase 3 · Final</span></h1>
+    <h1>Gemelo Digital Clorofila <span class="fase">Fase 4 · PROSPECT-D</span></h1>
     <div class="cabecera-derecha">
       <span id="etiqueta-modo" class="modo">reflectancia</span>
       <div id="estado-conexion" class="badge desconectado">Desconectado</div>
@@ -43,8 +43,13 @@
           <span>Estrés simulado</span>
           <button id="boton-estres" class="interruptor">Desactivado</button>
         </div>
+        <div class="control">
+          <span>Hoja simulada (verdad)</span>
+          <div class="hoja-dato">Cab <strong id="hoja-cab">—</strong> µg/cm²</div>
+          <button id="boton-sincronizar" class="secundario">Reajustar gemelo a la hoja</button>
+        </div>
       </div>
-      <p class="meta">Los cambios se aplican al gemelo y al simulador. El aviso de anomalía salta cuando el error relativo supera el 10 %.</p>
+      <p class="meta">Los sliders mueven SOLO el gemelo; la hoja simulada es independiente. El aviso de anomalía salta cuando el error relativo supera el 10 %.</p>
     </section>
 
     <section class="tarjeta">
@@ -72,7 +77,8 @@
         <h2>Indicador de clorofila</h2>
         <div class="indice-numero" id="indice-valor">— / 100</div>
         <div class="indice-fondo"><div class="indice-relleno" id="indice-barra"></div></div>
-        <p class="meta aviso">Estimación demostrativa a partir de Cab, no un diagnóstico agronómico calibrado.</p>
+        <p class="meta">Cab gemelo: <strong id="gemelo-cab">—</strong> µg/cm² · Cab estimado (ML): <strong id="ml-cab">—</strong></p>
+        <p class="meta aviso">Estimaciones demostrativas sobre datos sintéticos, no un diagnóstico agronómico calibrado. El ML solo opera en reflectancia.</p>
       </section>
     </div>
 

@@ -2,3 +2,4 @@ fastapi>=0.110
 uvicorn[standard]>=0.29
 websockets>=12.0
 numpy>=1.26  # dataset sintetico y regresor base (sin sklearn/pandas)
+scipy>=1.10  # funcion expi para PROSPECT-D oficial

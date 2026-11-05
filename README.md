@@ -1,4 +1,4 @@
-# Gemelo Digital Clorofila — FASE 3 (Final)
+# Gemelo Digital Clorofila — FASE 4 (PROSPECT-D oficial + ML)
 
 Sistema de gemelo digital simplificado para un sensor espectral AS7341
 (ESP32): recibe lecturas (simuladas o hardware), predice qué debería medir
@@ -9,9 +9,10 @@ en tiempo real, con detección de anomalías.
 
 ```text
 backend/
-  main.py              # FastAPI + WebSocket /ws + API REST + sirve el frontend
-  twin_model.py        # Gemelo: R/T(λ; Cab, Cw) -> 10 canales + comparacion
-  sensor_simulator.py  # Simulador AS7341 basado en el gemelo (+ modo estrés)
+  main.py              # FastAPI + WS + REST; gemelo oficial, hoja/gemelo separados, ML
+  twin_model.py        # Gemelo heuristico de la demo original (para dataset --fuente heuristico)
+  sensor_simulator.py  # Simulador AS7341 con PROSPECT-D oficial (+ estrés relativo)
+  validacion/          # Contraste vs paquete R: rejilla, scripts y fixture R
   dataset_sintetico.py # Generador de dataset sintetico (hojas virtuales)
   ridge.py             # Ridge con numpy puro (sin sklearn)
   prospect.py          # PROSPECT-D oficial (adapter de prospect_oficial)
@@ -44,10 +45,14 @@ python -m uvicorn main:app --reload --port 8000
 Abrir **http://127.0.0.1:8000**.
 
 - Badge "Conectado" + gráfico que se actualiza cada segundo.
-- Sliders Cab (5–80 µg/cm²), Cw (0.005–0.05 cm) y N (1.0–2.5), selector
-  reflectancia/transmitancia e interruptor de estrés simulado.
-- Al activar el estrés, la tarjeta de comparación se marca en rojo y
-  aparece el aviso de anomalía (error relativo > 10 %).
+- Sliders Cab (5–80 µg/cm²), Cw (0.005–0.05 cm) y N (1.0–2.5) mueven SOLO
+  el gemelo; la hoja simulada es independiente (su Cab verdadero se muestra
+  en el panel). "Reajustar gemelo a la hoja" los vuelve a alinear.
+- Selector reflectancia/transmitancia, estrés simulado y **Cab estimado por
+  ML** (Ridge entrenado en PROSPECT-D; solo en reflectancia).
+- Al separar el gemelo de la hoja o al activar el estrés, la tarjeta de
+  comparación se marca en rojo y aparece el aviso de anomalía
+  (error relativo > 10 %).
 - Si se reinicia el backend, el frontend reintenta cada 2 s.
 
 ## API
@@ -55,39 +60,41 @@ Abrir **http://127.0.0.1:8000**.
 | Método | Ruta                   | Descripción                                      |
 |--------|------------------------|--------------------------------------------------|
 | GET    | `/`                    | Dashboard                                        |
-| GET    | `/api/salud`           | `{"estado":"ok","fase":3,...}`                   |
-| GET    | `/api/config`          | Configuración actual `{cab, cw, n, modo, estres}` |
-| POST   | `/api/config`          | Actualiza (parcial o total) cab/cw/n/modo/estres |
-| GET    | `/api/modelo?cab=&cw=&modo=&n=` | Predicción del gemelo + índice          |
-| WS     | `/ws`                  | 1 msg/s: lectura + predicción + comparación      |
+| GET    | `/api/salud`           | `{"estado":"ok","fase":4,...,"ml_disponible"}`   |
+| GET    | `/api/config`          | `{gemelo:{cab,cw,n}, hoja:{...}, modo, estres}`  |
+| POST   | `/api/config`          | Todo validado o nada; `sincronizar:true` alinea  |
+| GET    | `/api/modelo?cab=&cw=&modo=&n=` | Predicción PROSPECT-D oficial + índice  |
+| WS     | `/ws`                  | lectura + predicción + comparación + Cab ML      |
 
 Mensaje WS:
 
 ```json
 {
   "timestamp": "...", "canales": {...}, "prediccion": {...},
-  "comparacion": {"rmse": 39.4, "rmse_rel": 0.039, "sesgo": -11.8, "n_canales": 10},
+  "comparacion": {"rmse": 12.1, "rmse_rel": 0.023, "sesgo": -2.4, "n_canales": 10},
   "anomalia": false,
+  "cab_estimado_ml": 52.4,
   "gemelo": {"cab": 45.0, "cw": 0.015, "n": 1.5, "modo": "reflectancia", "indice_clorofila": 53.3},
+  "hoja": {"cab_base": 45.0, "cab_verdadero": 45.8, "cw": 0.015, "n": 1.5},
   "orden_canales": ["F1", "...", "Clear", "NIR"]
 }
 ```
 
-## Modelo de gemelo digital
+`cab_estimado_ml` es null en transmitancia o sin modelo entrenado.
 
-1. **Absorción de clorofila** `A(λ)`: gaussianas en 445 y 680 nm + fondo verde.
-2. **Reflectancia y transmitancia base** (N neutro = 1.5): `R` con meseta NIR
-   `0.48·exp(−Cw·8)`; `T` con niveles más bajos y caída NIR más fuerte
-   `0.42·exp(−Cw·10)`.
-3. **Estructura N** (1.0 fina → 2.5 gruesa): la luz dispersada se reparte con
-   más reflectancia y menos transmitancia al aumentar N; se garantiza
-   `R + T ≤ 1` en todo el espectro (conservación de la energía).
-4. **Convolución** numérica con la respuesta gaussiana de cada canal.
-5. **Calibración compartida** `cuentas = R·5000`: simulador y gemelo usan la
-   misma escala; el RMSE típico es ~40 cuentas (~4 %), dominado por ruido.
-6. **Comparación**: error por canal, RMSE, RMSE relativo, sesgo; anomalía si
-   `rmse_rel > 0.10`.
-7. **Índice 0–100**: normalización lineal de Cab (5→0, 80→100).
+## Modelo de gemelo digital (dashboard: PROSPECT-D oficial)
+
+1. **PROSPECT-D oficial** (`prospect_oficial/`): R(λ) y T(λ) para
+   (Cab, Cw, N) más extras fijos (car=8, cant=1, cbrown=0, cm=0.005).
+2. **Convolución** con la respuesta gaussiana de cada canal del AS7341.
+3. **Calibración compartida** `cuentas = R·5000`: simulador y gemelo usan
+   la misma escala; el RMSE basal es ~2-3 % (ruido + deriva leve).
+4. **Hoja y gemelo separados**: la hoja simulada deriva ±2 µg/cm² y no
+   cambia con los sliders; el gemelo sí. La discrepancia entre ambos
+   dispara la anomalía (`rmse_rel > 0.10`), igual que el estrés.
+5. **Cab estimado por ML** (Ridge entrenado en dataset oficial, solo
+   reflectancia) junto al Cab supuesto del gemelo.
+6. **Índice 0–100**: normalización lineal de Cab (5→0, 80→100).
 
 ## Modelo PROSPECT-D oficial (`prospect_oficial/`)
 
@@ -105,8 +112,8 @@ idénticos en ambas implementaciones.
 
 Distancia con el antiguo modelo heurístico (canales AS7341): MAE de
 330–623 cuentas según Cab (p. ej. Cab=40: F5 1378→612, F8 305→379).
-El heurístico **no** era equivalente a PROSPECT-D y queda relegado a
-demo del dashboard (`twin_model.py`).
+El heurístico **no** era equivalente a PROSPECT-D y solo se conserva
+para generar el dataset `--fuente heuristico` (`twin_model.py`).
 
 Parámetros: N, Cab, Car, Cant, Cbrown, Cw, Cm. Verificado además:
 `máx(R+T) ≤ 1` en 200 hojas aleatorias; Cab↑ ⇒ R↓ en azul/rojo;
@@ -170,9 +177,9 @@ que el `FACTOR_CALIBRACION` supuesto).
   fiabilidad; el control de Cw tiene efecto demostrativo limitado.
   La sensibilidad al agua cerca de 910 nm es limitada frente a bandas
   como 1450/1940 nm, fuera del alcance del AS7341.
-- El gemelo heurístico del dashboard sigue siendo un modelo simplificado
-  (no PROSPECT-D); PROSPECT-D vive en `prospect.py` para el dataset ML.
-  Ninguno implica recuperar Cab, Cw y N de forma única con estos canales.
+- Dashboard, simulador y dataset ML usan PROSPECT-D oficial; `twin_model.py`
+  (heurístico) solo genera el dataset `--fuente heuristico`. Ningún modelo
+  implica recuperar Cab, Cw y N de forma única con estos canales.
 - Umbral de anomalía (10 %) arbitrario para la demo.
 - `prospect_oficial/` se distribuye bajo **GPLv3** (tablas y estructura
   de `prosail`, Copyright J Gomez-Dans 2017-2018); ver `PROCEDENCIA.md`.
