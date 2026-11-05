@@ -149,10 +149,9 @@ es el efecto físico esperado, no un error. Detalle en `modelos/*.metricas.json`
 campo); el bandpass por sí solo no reproduce el hardware real (falta
 iluminación, ganancia e integración); Cw y N actúan como variabilidad,
 no como magnitudes recuperables con este sensor. Hacen falta muestras
-reales con Cab de referencia para validar. Comparación directa contra el
-paquete R de los autores, pendiente (requiere R; aquí se contrastó contra
-la implementación Python `prosail`, que declara como referencia los
-códigos originales de Jussieu).
+reales con Cab de referencia para validar. El contraste contra el
+paquete R de los autores **está ejecutado**: coincidencia a 2.15e-15
+en 12 casos (ver `backend/validacion/` y `PROCEDENCIA.md`).
 
 ## Modo hardware (ESP32 real)
 

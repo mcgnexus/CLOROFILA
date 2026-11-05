@@ -28,6 +28,20 @@
   publicadas, siguiendo la estructura de `prospect_d.py` de prosail
   para permitir comparacion directa.
 
+## Contraste contra el paquete R de los autores (ejecutado 2026-11-05)
+
+- Entorno: R 4.6.2 (instalacion de usuario) + paquete `prospect` 2.0.1
+  instalado desde GitLab (`remotes::install_gitlab("jbferet/prospect")`).
+- Rejilla: 12 casos en `../validacion/grid_prospect.csv` (N 1.0-2.5
+  incluidos fraccionarios 1.33/1.7/2.2, Cab 0-80, carotenoides,
+  antocianinas, marrones, agua y materia seca; incluye el caso limite
+  sin absorcion).
+- Resultado: `comparar_python.py` informa **max|dR| = 2.15e-15,
+  max|dT| = 2.16e-15** (ruido de punto flotante). Los avisos de NaN en
+  regimenes extremos son identicos en ambas implementaciones.
+- Fixture: `../validacion/espectros_R.csv` (salida R) permite repetir
+  el lado Python sin R.
+
 ## Licencia
 
 - `prosail` declara licencia **GPLv3** (Copyright J Gomez-Dans
