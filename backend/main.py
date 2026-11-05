@@ -297,6 +297,12 @@ async def raiz():
     return FileResponse(FRONTEND_DIR / "index.html")
 
 
+# Tutorial de uso, accesible con el boton "Ayuda" del dashboard.
+@app.get("/tutorial")
+async def tutorial():
+    return FileResponse(FRONTEND_DIR / "tutorial.html")
+
+
 # Archivos estaticos (style.css, app.js, charts.js) bajo /static.
 # Se monta DESPUES de las rutas para no eclipsar /ws ni /api/*.
 if FRONTEND_DIR.exists():

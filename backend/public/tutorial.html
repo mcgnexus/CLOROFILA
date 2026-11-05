@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ayuda — Gemelo Digital Clorofila</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Gemelo Digital Clorofila <span class="fase">Ayuda</span></h1>
+    <div class="cabecera-derecha">
+      <a href="/" class="boton-ayuda">← Volver al dashboard</a>
+    </div>
+  </header>
+
+  <main class="tutorial">
+    <section class="tarjeta">
+      <h2>Qué es esta aplicación</h2>
+      <p>Un <strong>gemelo digital simplificado</strong> para medir clorofila con el
+      sensor espectral AS7341 (11 canales: F1–F8, Clear y NIR). El sistema simula
+      una hoja, predice qué debería medir el sensor con el modelo físico
+      <strong>PROSPECT-D</strong> y compara ambas señales en tiempo real.</p>
+      <p>Todo lo que ves son <strong>datos sintéticos</strong>: sirven para aprender
+      y demostrar el sistema, no son un diagnóstico agronómico.</p>
+    </section>
+
+    <section class="tarjeta">
+      <h2>El dashboard, pieza a pieza</h2>
+      <ul>
+        <li><strong>Gráfico de espectro:</strong> barras = lectura simulada del
+          sensor; línea = predicción del gemelo. Si se separan, algo cambia en
+          la hoja (o en tu supuesto).</li>
+        <li><strong>Comparación (RMSE, error relativo, sesgo):</strong> cuánto se
+          aparta la lectura del modelo, en cuentas ADC.</li>
+        <li><strong>Indicador 0–100:</strong> normalización demostrativa del Cab
+          supuesto. <strong>Cab estimado (ML):</strong> lo que deduce un modelo
+          Ridge entrenado con 10.000 hojas sintéticas (solo en reflectancia).</li>
+        <li><strong>Hoja simulada:</strong> el estado «verdadero» (desconocido en
+          campo; aquí visible para aprender). Deriva lentamente para que el
+          panel se vea vivo.</li>
+      </ul>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Controles y utilidades</h2>
+      <ul>
+        <li><strong>Sliders Cab / Cw / N:</strong> mueven SOLO el gemelo (tu
+          hipótesis sobre la hoja). Cab = clorofila (µg/cm²), Cw = agua (cm),
+          N = estructura (1 fina – 2,5 gruesa).</li>
+        <li><strong>Reajustar gemelo a la hoja:</strong> vuelve a alinear tu
+          hipótesis con la hoja simulada tras un experimento.</li>
+        <li><strong>Modo óptico:</strong> reflectancia o transmitancia. El ML
+          solo funciona en reflectancia (así se entrenó).</li>
+        <li><strong>Estrés simulado:</strong> aplica una firma de estrés a la
+          hoja (cae el NIR, sube el rojo, baja el verde) para ver cómo salta
+          la anomalía.</li>
+      </ul>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Prueba guiada (2 minutos)</h2>
+      <ol>
+        <li>Observa el gráfico: barras y línea casi superpuestas, error
+          relativo ~2–5 %, sin aviso.</li>
+        <li>Sube el slider <strong>Cab a 70</strong>: la predicción cambia pero
+          la hoja no → el error supera el 10 % y aparece
+          <strong>«Posible anomalía»</strong>. Eso es una discrepancia
+          modelo–medida, no un diagnóstico automático.</li>
+        <li>Pulsa <strong>Reajustar</strong>: todo vuelve a coincidir.</li>
+        <li>Activa el <strong>estrés</strong> y mira cómo caen NIR y F5.</li>
+      </ol>
+    </section>
+
+    <section class="tarjeta">
+      <h2>API para programadores</h2>
+      <table class="tabla-api">
+        <tr><th>Método</th><th>Ruta</th><th>Para qué</th></tr>
+        <tr><td>GET</td><td><code>/</code></td><td>Este dashboard</td></tr>
+        <tr><td>GET</td><td><code>/api/salud</code></td><td>Estado del backend</td></tr>
+        <tr><td>GET</td><td><code>/api/lectura</code></td><td>Una lectura completa (igual que cada mensaje del WebSocket)</td></tr>
+        <tr><td>GET/POST</td><td><code>/api/config</code></td><td>Ver o cambiar gemelo, hoja, modo y estrés</td></tr>
+        <tr><td>GET</td><td><code>/api/modelo?cab=&amp;cw=&amp;n=&amp;modo=</code></td><td>Predicción PROSPECT-D para unos parámetros</td></tr>
+        <tr><td>WS</td><td><code>/ws</code></td><td>Lectura + predicción + ML cada segundo (solo local; en Vercel la app sondea <code>/api/lectura</code>)</td></tr>
+      </table>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Límites honestos</h2>
+      <ul>
+        <li>Sin hardware real: el ESP32 aún no está conectado.</li>
+        <li>El índice 0–100 y el Cab ML son estimaciones sobre simulaciones,
+          no medidas de campo.</li>
+        <li>El sensor no estima agua con fiabilidad (banda de 910 nm poco
+          sensible) ni permite recuperar Cab, Cw y N de forma única.</li>
+        <li>PROSPECT-D está contrastado contra el paquete R de los autores
+          (diferencia ~2e-15); eso valida el código, no el sensor.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

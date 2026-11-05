@@ -144,6 +144,42 @@ main {
   border-radius: 999px;
 }
 
+.boton-ayuda {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--texto);
+  text-decoration: none;
+  background: #1a2129;
+  border: 1px solid var(--borde);
+  padding: 0.25rem 0.8rem;
+  border-radius: 999px;
+}
+
+.boton-ayuda:hover { border-color: var(--acento); }
+
+.tutorial .tarjeta { margin-bottom: 1rem; }
+.tutorial ul, .tutorial ol { line-height: 1.6; }
+.tutorial li { margin-bottom: 0.4rem; }
+
+.tabla-api {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.tabla-api th, .tabla-api td {
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--borde);
+}
+
+.tabla-api code {
+  background: #12181e;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
 .controles .rejilla-controles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
