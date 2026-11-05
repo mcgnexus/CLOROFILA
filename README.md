@@ -178,6 +178,8 @@ Notas:
 
 - `vercel.json` dirige todo el tráfico a `backend/main.py` (sirve el
   frontend y la API desde el mismo proceso).
+- El frontend viaja dentro de `backend/public/` para que Vercel lo
+  incluya en el bundle; el HTML estático además lo sirve el CDN.
 - Las dependencias salen de `backend/requirements.txt` (incluye scipy).
 - `backend/data/*.csv` no se versiona; el simulador genera al vuelo.
 - Límites del plan hobby: arranque en frío de 1-2 s (numpy/scipy) y
